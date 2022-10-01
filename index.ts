@@ -19,7 +19,7 @@ admin.initializeApp({
 const app = express();
 const port = process.env.PORT || 8080;
 
-const csrfMiddleware = csrf({ cookie: { sameSite: true } });
+const csrfMiddleware = csrf({ cookie: { sameSite: "lax" } });
 
 app.use("/main", express.static(resolve("./public")));
 

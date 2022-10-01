@@ -1,11 +1,10 @@
 import admin, { ServiceAccount } from "firebase-admin";
-import { readFile } from "fs/promises";
 import dotenv from "dotenv";
-import express, { CookieOptions } from "express";
+import express from "express";
 import csrf from "csurf";
 import cookieParser from "cookie-parser";
 import { resolve } from "path";
-// import sql from "mssql/msnodesqlv8.js";
+import { QueryTypes, Sequelize } from "sequelize";
 
 dotenv.config();
 const serviceAccount: ServiceAccount = JSON.parse(
@@ -26,6 +25,23 @@ app.use("/main", express.static(resolve("./public")));
 app.use(express.json());
 app.use(cookieParser());
 app.use(csrfMiddleware);
+
+const sequelize = new Sequelize(
+	process.env.DB_NAME || "",
+	process.env.DB_USER || "",
+	process.env.DB_PASSWORD || "",
+	{
+		host: process.env.DB_HOST || "localhost",
+		dialect: "mssql",
+	}
+);
+
+try {
+	await sequelize.authenticate();
+	console.log("Success");
+} catch (err) {
+	console.log(err);
+}
 
 // const sqlConfig: sql.config = {
 // 	user: process.env.DB_USER,
@@ -64,21 +80,22 @@ app.post("/api/login", csrfMiddleware, (req, res) => {
 		.verifyIdToken(idToken)
 		.then(
 			async (decodedToken) => {
-				const getUserRes = await sql.query(
-					`SELECT (AdministratorAccess) FROM Users WHERE FirebaseUID = '${decodedToken.uid}'`
+				const users: any[] = await sequelize.query(
+					`SELECT (AdministratorAccess) FROM Users WHERE FirebaseUID = '${decodedToken.uid}'`,
+					{ type: QueryTypes.SELECT }
 				);
 
 				let adminAccess = false;
 
-				if (getUserRes.recordset.length === 0) {
-					const setUserRes = await sql.query(
+				if (users.length === 0) {
+					await sequelize.query(
 						`INSERT INTO Users (FirebaseUID, Email) VALUES ('${decodedToken.uid}', '${decodedToken.email}')`
 					);
 					await addCasesToUser(decodedToken.uid, "Weapon Case", 1);
 					await addCasesToUser(decodedToken.uid, "Bravo Case", 1);
 					await addCasesToUser(decodedToken.uid, "Hydra Case", 2);
 				} else {
-					adminAccess = getUserRes.recordset[0].AdministratorAccess;
+					adminAccess = users[0].AdministratorAccess;
 					await addCasesToUser(decodedToken.uid, "Weapon Case", 1);
 					await addCasesToUser(decodedToken.uid, "Bravo Case", 1);
 					await addCasesToUser(decodedToken.uid, "Hydra Case", 2);
@@ -88,6 +105,7 @@ app.post("/api/login", csrfMiddleware, (req, res) => {
 				return;
 			},
 			(err) => {
+				console.log(err);
 				res.status(401).send("Unauthorized Request");
 				return;
 			}
@@ -129,17 +147,19 @@ app.get("/api/inventory", csrfMiddleware, (req, res) => {
 		.auth()
 		.verifyIdToken(idToken)
 		.then(async (decodedToken) => {
-			let inventoryRes =
-				await sql.query(`SELECT Cases.CaseName, Cases.ImagePath, SUM(InventoryDetails.Quantity) AS Quantity
+			let inventory = await sequelize.query(
+				`SELECT Cases.CaseName, Cases.ImagePath, SUM(InventoryDetails.Quantity) AS Quantity
 				FROM Users
 				INNER JOIN InventoryDetails
 				ON Users.ID = InventoryDetails.UserID
 				INNER JOIN Cases
 				ON InventoryDetails.CaseID = Cases.ID
 				WHERE Users.FirebaseUID = '${decodedToken.uid}' AND Quantity > 0
-				GROUP BY Cases.CaseName, Cases.ImagePath`);
+				GROUP BY Cases.CaseName, Cases.ImagePath`,
+				{ type: QueryTypes.SELECT }
+			);
 
-			res.status(200).json(inventoryRes.recordset);
+			res.status(200).json(inventory);
 		})
 		.catch((err) => {
 			console.log(err);
@@ -161,15 +181,17 @@ app.delete("/api/case", csrfMiddleware, (req, res) => {
 		.auth()
 		.verifyIdToken(idToken)
 		.then(async (decodedToken) => {
-			let quantityRes =
-				await sql.query(`SELECT InventoryDetails.ID, InventoryDetails.Quantity FROM Users
+			let intventoryDetails: any[] = await sequelize.query(
+				`SELECT InventoryDetails.ID, InventoryDetails.Quantity FROM Users
 				INNER JOIN InventoryDetails
 				ON Users.ID = InventoryDetails.UserID
 				INNER JOIN Cases
 				ON InventoryDetails.CaseID = Cases.ID
-				WHERE Cases.CaseName = '${caseName}' AND Users.FirebaseUID = '${decodedToken.uid}'`);
+				WHERE Cases.CaseName = '${caseName}' AND Users.FirebaseUID = '${decodedToken.uid}'`,
+				{ type: QueryTypes.SELECT }
+			);
 
-			if (quantityRes.recordset.length === 0) {
+			if (intventoryDetails.length === 0) {
 				console.log("No Records Found");
 				res.status(200).json(false);
 				return;
@@ -177,24 +199,24 @@ app.delete("/api/case", csrfMiddleware, (req, res) => {
 
 			let removed = false;
 
-			for (let i = 0; i < quantityRes.recordset.length; i++) {
-				if (quantityRes.recordset[i].Quantity === 1 && !removed) {
-					await sql.query(
-						`DELETE FROM InventoryDetails WHERE InventoryDetails.ID = ${quantityRes.recordset[i].ID}`
+			for (let i = 0; i < intventoryDetails.length; i++) {
+				if (intventoryDetails[i].Quantity === 1 && !removed) {
+					await sequelize.query(
+						`DELETE FROM InventoryDetails WHERE InventoryDetails.ID = ${intventoryDetails[i].ID}`
 					);
 					removed = true;
-				} else if (quantityRes.recordset[i].Quantity > 1 && !removed) {
-					await sql.query(
+				} else if (intventoryDetails[i].Quantity > 1 && !removed) {
+					await sequelize.query(
 						`UPDATE InventoryDetails SET InventoryDetails.Quantity = ${
-							quantityRes.recordset[i].Quantity - 1
+							intventoryDetails[i].Quantity - 1
 						} WHERE InventoryDetails.ID = ${
-							quantityRes.recordset[i].ID
+							intventoryDetails[i].ID
 						}`
 					);
 					removed = true;
-				} else if (quantityRes.recordset[i].Quantity === 0) {
-					await sql.query(
-						`DELETE FROM InventoryDetails WHERE InventoryDetails.ID = ${quantityRes.recordset[i].ID}`
+				} else if (intventoryDetails[i].Quantity === 0) {
+					await sequelize.query(
+						`DELETE FROM InventoryDetails WHERE InventoryDetails.ID = ${intventoryDetails[i].ID}`
 					);
 				}
 			}
@@ -224,13 +246,15 @@ app.get("/api/items", csrfMiddleware, (req, res) => {
 		.auth()
 		.verifyIdToken(idToken)
 		.then(async (decodedToken) => {
-			let itemsRes =
-				await sql.query(`SELECT Items.ItemName, Items.ImagePath, Items.Rarity FROM Items
+			let items = await sequelize.query(
+				`SELECT Items.ItemName, Items.ImagePath, Items.Rarity FROM Items
 				INNER JOIN Cases
 				ON Items.CaseID = Cases.ID
-				WHERE Cases.CaseName = '${caseName}'`);
+				WHERE Cases.CaseName = '${caseName}'`,
+				{ type: QueryTypes.SELECT }
+			);
 
-			res.status(200).json(itemsRes.recordset);
+			res.status(200).json(items);
 		})
 		.catch((err) => {
 			console.log(err);
@@ -247,35 +271,38 @@ async function addCasesToUser(
 	caseName: string,
 	quantity: number
 ) {
-	let userRes = await sql.query(
-		`SELECT ID from Users WHERE FirebaseUID = '${firebaseUID}'`
+	let user: any[] = await sequelize.query(
+		`SELECT ID from Users WHERE FirebaseUID = '${firebaseUID}'`,
+		{ type: QueryTypes.SELECT }
 	);
 
-	if (userRes.recordset.length === 0) {
+	if (user.length === 0) {
 		console.log("User not found with uid: " + firebaseUID);
 		return;
 	}
 
-	const userID = userRes.recordset[0].ID;
+	const userID = user[0].ID;
 
 	console.log("User ID: " + userID);
 
-	let caseRes = await sql.query(
-		`SELECT ID FROM Cases WHERE CaseName = '${caseName}'`
+	let weaponCase: any[] = await sequelize.query(
+		`SELECT ID FROM Cases WHERE CaseName = '${caseName}'`,
+		{ type: QueryTypes.SELECT }
 	);
 
-	if (caseRes.recordset.length === 0) {
+	if (weaponCase.length === 0) {
 		console.log("Case not found with name: " + caseName);
 		return;
 	}
 
-	const caseID = caseRes.recordset[0].ID;
+	const caseID = weaponCase[0].ID;
 
 	console.log("Case ID: " + caseID);
 
-	let inventoryRes = await sql.query(
-		`INSERT INTO InventoryDetails VALUES (${userID}, ${caseID}, ${quantity})`
+	let [result, metadata] = await sequelize.query(
+		`INSERT INTO InventoryDetails VALUES (${userID}, ${caseID}, ${quantity})`,
+		{ type: QueryTypes.INSERT }
 	);
 
-	console.log(inventoryRes.rowsAffected);
+	console.log(result, metadata);
 }

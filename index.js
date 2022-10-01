@@ -1,7 +1,7 @@
 import admin from "firebase-admin";
 import dotenv from "dotenv";
 import express from "express";
-import csrf from "csurf";
+// import csrf from "csurf";
 import cookieParser from "cookie-parser";
 import { resolve } from "path";
 import { QueryTypes, Sequelize } from "sequelize";
@@ -13,11 +13,11 @@ admin.initializeApp({
 });
 const app = express();
 const port = process.env.PORT || 8080;
-const csrfMiddleware = csrf({ cookie: { sameSite: "lax" } });
-app.use("/main", express.static(resolve("./public")));
+// const csrfMiddleware = csrf({ cookie: { sameSite: "lax" } });
+app.use("/main", express.static(resolve("./frontend")));
 app.use(express.json());
 app.use(cookieParser());
-app.use(csrfMiddleware);
+// app.use(csrfMiddleware);
 const sequelize = new Sequelize(process.env.DB_NAME || "", process.env.DB_USER || "", process.env.DB_PASSWORD || "", {
     host: process.env.DB_HOST || "localhost",
     dialect: "mssql",
@@ -30,18 +30,18 @@ try {
 catch (err) {
     console.log(err);
 }
-app.all("*", (req, res, next) => {
-    res.cookie("XSRF-TOKEN", req.csrfToken());
-    next();
-});
-app.get("/api/csrf", (req, res) => {
-    res.sendStatus(200);
-});
-app.get("/", csrfMiddleware, (req, res) => {
+// app.all("*", (req, res, next) => {
+// 	res.cookie("XSRF-TOKEN", req.csrfToken());
+// 	next();
+// });
+// app.get("/api/csrf", (req, res) => {
+// 	res.sendStatus(200);
+// });
+app.get("/", (req, res) => {
     // res.status(200).send("Hello World!");
-    res.sendFile(resolve("./public/index.html"));
+    res.sendFile(resolve("./frontend/index.html"));
 });
-app.post("/api/login", csrfMiddleware, (req, res) => {
+app.post("/api/login", (req, res) => {
     const idToken = req.body.idToken || "";
     admin
         .auth()
@@ -69,7 +69,7 @@ app.post("/api/login", csrfMiddleware, (req, res) => {
         res.status(401).send(err);
     });
 });
-app.get("/api/getcase", csrfMiddleware, (req, res) => {
+app.get("/api/getcase", (req, res) => {
     const idToken = req.query.idToken;
     if (typeof idToken !== "string") {
         res.status(400).send("Bad Request, No ID Token");
@@ -89,7 +89,7 @@ app.get("/api/getcase", csrfMiddleware, (req, res) => {
         return;
     });
 });
-app.get("/api/inventory", csrfMiddleware, (req, res) => {
+app.get("/api/inventory", (req, res) => {
     const idToken = req.query.idToken;
     if (typeof idToken !== "string") {
         res.status(400).send("Bad Request, No ID Token");
@@ -114,7 +114,7 @@ app.get("/api/inventory", csrfMiddleware, (req, res) => {
         res.status(401).send("Unauthorized Request");
     });
 });
-app.delete("/api/case", csrfMiddleware, (req, res) => {
+app.delete("/api/case", (req, res) => {
     const idToken = req.body.idToken || "";
     const caseName = req.body.caseName;
     if (typeof idToken !== "string" || typeof caseName !== "string") {
@@ -161,7 +161,7 @@ app.delete("/api/case", csrfMiddleware, (req, res) => {
         return;
     });
 });
-app.get("/api/items", csrfMiddleware, (req, res) => {
+app.get("/api/items", (req, res) => {
     const idToken = req.query.idToken || "";
     const caseName = req.query.caseName;
     if (typeof idToken !== "string" || typeof caseName !== "string") {

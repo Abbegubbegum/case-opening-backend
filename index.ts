@@ -1,7 +1,7 @@
 import admin, { ServiceAccount } from "firebase-admin";
 import dotenv from "dotenv";
 import express from "express";
-import csrf from "csurf";
+// import csrf from "csurf";
 import cookieParser from "cookie-parser";
 import { resolve } from "path";
 import { QueryTypes, Sequelize } from "sequelize";
@@ -19,13 +19,13 @@ admin.initializeApp({
 const app = express();
 const port = process.env.PORT || 8080;
 
-const csrfMiddleware = csrf({ cookie: { sameSite: "lax" } });
+// const csrfMiddleware = csrf({ cookie: { sameSite: "lax" } });
 
-app.use("/main", express.static(resolve("./public")));
+app.use("/main", express.static(resolve("./frontend")));
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(csrfMiddleware);
+// app.use(csrfMiddleware);
 
 const sequelize = new Sequelize(
 	process.env.DB_NAME || "",
@@ -45,21 +45,21 @@ try {
 	console.log(err);
 }
 
-app.all("*", (req, res, next) => {
-	res.cookie("XSRF-TOKEN", req.csrfToken());
-	next();
-});
+// app.all("*", (req, res, next) => {
+// 	res.cookie("XSRF-TOKEN", req.csrfToken());
+// 	next();
+// });
 
-app.get("/api/csrf", (req, res) => {
-	res.sendStatus(200);
-});
+// app.get("/api/csrf", (req, res) => {
+// 	res.sendStatus(200);
+// });
 
-app.get("/", csrfMiddleware, (req, res) => {
+app.get("/", (req, res) => {
 	// res.status(200).send("Hello World!");
-	res.sendFile(resolve("./public/index.html"));
+	res.sendFile(resolve("./frontend/index.html"));
 });
 
-app.post("/api/login", csrfMiddleware, (req, res) => {
+app.post("/api/login", (req, res) => {
 	const idToken: string = req.body.idToken || "";
 
 	admin
@@ -96,7 +96,7 @@ app.post("/api/login", csrfMiddleware, (req, res) => {
 		});
 });
 
-app.get("/api/getcase", csrfMiddleware, (req, res) => {
+app.get("/api/getcase", (req, res) => {
 	const idToken = req.query.idToken;
 
 	if (typeof idToken !== "string") {
@@ -119,7 +119,7 @@ app.get("/api/getcase", csrfMiddleware, (req, res) => {
 		});
 });
 
-app.get("/api/inventory", csrfMiddleware, (req, res) => {
+app.get("/api/inventory", (req, res) => {
 	const idToken = req.query.idToken;
 
 	if (typeof idToken !== "string") {
@@ -151,7 +151,7 @@ app.get("/api/inventory", csrfMiddleware, (req, res) => {
 		});
 });
 
-app.delete("/api/case", csrfMiddleware, (req, res) => {
+app.delete("/api/case", (req, res) => {
 	const idToken = req.body.idToken || "";
 	const caseName = req.body.caseName;
 
@@ -217,7 +217,7 @@ app.delete("/api/case", csrfMiddleware, (req, res) => {
 		});
 });
 
-app.get("/api/items", csrfMiddleware, (req, res) => {
+app.get("/api/items", (req, res) => {
 	const idToken = req.query.idToken || "";
 	const caseName = req.query.caseName;
 

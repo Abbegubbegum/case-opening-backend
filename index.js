@@ -41,7 +41,7 @@ app.get("/", csrfMiddleware, (req, res) => {
     // res.status(200).send("Hello World!");
     res.sendFile(resolve("./public/index.html"));
 });
-app.post("/api/login", (req, res) => {
+app.post("/api/login", csrfMiddleware, (req, res) => {
     const idToken = req.body.idToken || "";
     admin
         .auth()
@@ -63,10 +63,10 @@ app.post("/api/login", (req, res) => {
         }
         res.status(200).json(adminAccess);
         return;
-    }, (err) => {
+    })
+        .catch((err) => {
         console.log(err);
-        res.status(401).send("Unauthorized Request");
-        return;
+        res.status(401).send(err);
     });
 });
 app.get("/api/getcase", csrfMiddleware, (req, res) => {

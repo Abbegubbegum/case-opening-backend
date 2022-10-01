@@ -59,44 +59,41 @@ app.get("/", csrfMiddleware, (req, res) => {
 	res.sendFile(resolve("./public/index.html"));
 });
 
-app.post("/api/login", (req, res) => {
+app.post("/api/login", csrfMiddleware, (req, res) => {
 	const idToken: string = req.body.idToken || "";
 
 	admin
 		.auth()
 		.verifyIdToken(idToken)
-		.then(
-			async (decodedToken) => {
-				const users: any[] = await sequelize.query(
-					`SELECT (AdministratorAccess) FROM Users WHERE FirebaseUID = '${decodedToken.uid}'`,
-					{ type: QueryTypes.SELECT }
+		.then(async (decodedToken) => {
+			const users: any[] = await sequelize.query(
+				`SELECT (AdministratorAccess) FROM Users WHERE FirebaseUID = '${decodedToken.uid}'`,
+				{ type: QueryTypes.SELECT }
+			);
+
+			let adminAccess = false;
+
+			if (users.length === 0) {
+				await sequelize.query(
+					`INSERT INTO Users (FirebaseUID, Email) VALUES ('${decodedToken.uid}', '${decodedToken.email}')`
 				);
-
-				let adminAccess = false;
-
-				if (users.length === 0) {
-					await sequelize.query(
-						`INSERT INTO Users (FirebaseUID, Email) VALUES ('${decodedToken.uid}', '${decodedToken.email}')`
-					);
-					await addCasesToUser(decodedToken.uid, "Weapon Case", 1);
-					await addCasesToUser(decodedToken.uid, "Bravo Case", 1);
-					await addCasesToUser(decodedToken.uid, "Hydra Case", 2);
-				} else {
-					adminAccess = users[0].AdministratorAccess;
-					await addCasesToUser(decodedToken.uid, "Weapon Case", 1);
-					await addCasesToUser(decodedToken.uid, "Bravo Case", 1);
-					await addCasesToUser(decodedToken.uid, "Hydra Case", 2);
-				}
-
-				res.status(200).json(adminAccess);
-				return;
-			},
-			(err) => {
-				console.log(err);
-				res.status(401).send("Unauthorized Request");
-				return;
+				await addCasesToUser(decodedToken.uid, "Weapon Case", 1);
+				await addCasesToUser(decodedToken.uid, "Bravo Case", 1);
+				await addCasesToUser(decodedToken.uid, "Hydra Case", 2);
+			} else {
+				adminAccess = users[0].AdministratorAccess;
+				await addCasesToUser(decodedToken.uid, "Weapon Case", 1);
+				await addCasesToUser(decodedToken.uid, "Bravo Case", 1);
+				await addCasesToUser(decodedToken.uid, "Hydra Case", 2);
 			}
-		);
+
+			res.status(200).json(adminAccess);
+			return;
+		})
+		.catch((err) => {
+			console.log(err);
+			res.status(401).send(err);
+		});
 });
 
 app.get("/api/getcase", csrfMiddleware, (req, res) => {

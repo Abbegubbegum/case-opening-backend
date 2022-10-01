@@ -59,7 +59,7 @@ app.get("/", csrfMiddleware, (req, res) => {
 	res.sendFile(resolve("./public/index.html"));
 });
 
-app.post("/api/login", csrfMiddleware, (req, res) => {
+app.post("/api/login", (req, res) => {
 	const idToken: string = req.body.idToken || "";
 
 	admin

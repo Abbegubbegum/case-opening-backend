@@ -41,7 +41,7 @@ app.get("/", csrfMiddleware, (req, res) => {
     // res.status(200).send("Hello World!");
     res.sendFile(resolve("./public/index.html"));
 });
-app.post("/api/login", csrfMiddleware, (req, res) => {
+app.post("/api/login", (req, res) => {
     const idToken = req.body.idToken || "";
     admin
         .auth()

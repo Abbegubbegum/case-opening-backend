@@ -5,7 +5,7 @@ import express, { CookieOptions } from "express";
 import csrf from "csurf";
 import cookieParser from "cookie-parser";
 import { resolve } from "path";
-import sql from "mssql/msnodesqlv8.js";
+// import sql from "mssql/msnodesqlv8.js";
 
 dotenv.config();
 const serviceAccount: ServiceAccount = JSON.parse(
@@ -29,18 +29,20 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(csrfMiddleware);
 
-const sqlConfig: sql.config = {
-	user: process.env.DB_USER,
-	password: process.env.DB_PASSWORD,
-	server: process.env.DB_HOST || "localhost",
-	database: process.env.DB_NAME,
-	driver: "msnodesqlv8",
-	options: {
-		trustServerCertificate: true,
-	},
-};
+// const sqlConfig: sql.config = {
+// 	user: process.env.DB_USER,
+// 	password: process.env.DB_PASSWORD,
+// 	server: process.env.DB_HOST || "localhost",
+// 	database: process.env.DB_NAME,
+// 	driver: "msnodesqlv8",
+// 	options: {
+// 		trustServerCertificate: true,
+// 	},
+// };
 
-await sql.connect(sqlConfig);
+// await sql.connect(sqlConfig);
+
+let sql: any = {};
 
 app.all("*", (req, res, next) => {
 	res.cookie("XSRF-TOKEN", req.csrfToken());

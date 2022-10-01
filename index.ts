@@ -53,9 +53,10 @@ app.get("/api/csrf", (req, res) => {
 	res.sendStatus(200);
 });
 
-// app.get("/", csrfMiddleware, (req, res) => {
-// 	res.sendFile(resolve("./frontend/index.html"));
-// });
+app.get("/", csrfMiddleware, (req, res) => {
+	res.status(200).send("Hello World!");
+	// res.sendFile(resolve("./frontend/index.html"));
+});
 
 app.post("/api/login", csrfMiddleware, (req, res) => {
 	const idToken: string = req.body.idToken || "";

@@ -2,7 +2,7 @@
 	"name": "case-opening-backend",
 	"version": "1.0.0",
 	"description": "",
-	"main": "api/index.js",
+	"main": "index.js",
 	"type": "module",
 	"engines": {
 		"node": "16.x"

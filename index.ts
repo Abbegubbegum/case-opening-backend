@@ -9,9 +9,7 @@ import { resolve } from "path";
 
 dotenv.config();
 const serviceAccount: ServiceAccount = JSON.parse(
-	await readFile(new URL("serviceAccountKey.json", import.meta.url), {
-		encoding: "utf8",
-	})
+	process.env.SERVICE_ACCOUNT_KEY || ""
 );
 
 admin.initializeApp({

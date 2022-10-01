@@ -5,6 +5,7 @@ import csrf from "csurf";
 import cookieParser from "cookie-parser";
 import { resolve } from "path";
 import { QueryTypes, Sequelize } from "sequelize";
+import * as tedious from "tedious";
 
 dotenv.config();
 const serviceAccount: ServiceAccount = JSON.parse(
@@ -33,6 +34,7 @@ const sequelize = new Sequelize(
 	{
 		host: process.env.DB_HOST || "localhost",
 		dialect: "mssql",
+		dialectModule: tedious,
 	}
 );
 
@@ -42,21 +44,6 @@ try {
 } catch (err) {
 	console.log(err);
 }
-
-// const sqlConfig: sql.config = {
-// 	user: process.env.DB_USER,
-// 	password: process.env.DB_PASSWORD,
-// 	server: process.env.DB_HOST || "localhost",
-// 	database: process.env.DB_NAME,
-// 	driver: "msnodesqlv8",
-// 	options: {
-// 		trustServerCertificate: true,
-// 	},
-// };
-
-// await sql.connect(sqlConfig);
-
-let sql: any = {};
 
 app.all("*", (req, res, next) => {
 	res.cookie("XSRF-TOKEN", req.csrfToken());

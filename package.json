@@ -4,9 +4,12 @@
 	"description": "",
 	"main": "out/main.js",
 	"type": "module",
+	"engines": {
+		"node": "16.x"
+	},
 	"scripts": {
 		"build": "tsc",
-		"serve": "nodemon ./out/main.js"
+		"serve": "nodemon ./main.js"
 	},
 	"keywords": [],
 	"author": "",

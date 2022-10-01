@@ -16,7 +16,7 @@ admin.initializeApp({
 const app = express();
 const port = process.env.PORT || 8080;
 const csrfMiddleware = csrf({ cookie: { sameSite: true } });
-app.use("/main", express.static(resolve("../frontend/dist")));
+app.use("/main", express.static(resolve("./frontend")));
 app.use(express.json());
 app.use(cookieParser());
 app.use(csrfMiddleware);
@@ -39,7 +39,7 @@ app.get("/api/csrf", (req, res) => {
     res.sendStatus(200);
 });
 app.get("/", csrfMiddleware, (req, res) => {
-    res.sendFile(resolve("../frontend/dist/index.html"));
+    res.sendFile(resolve("./frontend/index.html"));
 });
 app.post("/api/login", csrfMiddleware, (req, res) => {
     const idToken = req.body.idToken || "";

@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import csrf from "csurf";
 import cookieParser from "cookie-parser";
+import { resolve } from "path";
 // import sql from "mssql/msnodesqlv8.js";
 dotenv.config();
 const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY || "");
@@ -12,7 +13,7 @@ admin.initializeApp({
 const app = express();
 const port = process.env.PORT || 8080;
 const csrfMiddleware = csrf({ cookie: { sameSite: true } });
-// app.use("/main", express.static(resolve("./frontend")));
+app.use("/main", express.static(resolve("./frontend")));
 app.use(express.json());
 app.use(cookieParser());
 app.use(csrfMiddleware);
@@ -36,8 +37,8 @@ app.get("/api/csrf", (req, res) => {
     res.sendStatus(200);
 });
 app.get("/", csrfMiddleware, (req, res) => {
-    res.status(200).send("Hello World!");
-    // res.sendFile(resolve("./frontend/index.html"));
+    // res.status(200).send("Hello World!");
+    res.sendFile(resolve("./frontend/index.html"));
 });
 app.post("/api/login", csrfMiddleware, (req, res) => {
     const idToken = req.body.idToken || "";

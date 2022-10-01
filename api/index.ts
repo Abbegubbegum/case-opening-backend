@@ -23,7 +23,7 @@ const port = process.env.PORT || 8080;
 
 const csrfMiddleware = csrf({ cookie: { sameSite: true } });
 
-app.use("/main", express.static(resolve("./frontend")));
+// app.use("/main", express.static(resolve("./frontend")));
 
 app.use(express.json());
 app.use(cookieParser());
@@ -53,9 +53,9 @@ app.get("/api/csrf", (req, res) => {
 	res.sendStatus(200);
 });
 
-app.get("/", csrfMiddleware, (req, res) => {
-	res.sendFile(resolve("./frontend/index.html"));
-});
+// app.get("/", csrfMiddleware, (req, res) => {
+// 	res.sendFile(resolve("./frontend/index.html"));
+// });
 
 app.post("/api/login", csrfMiddleware, (req, res) => {
 	const idToken: string = req.body.idToken || "";

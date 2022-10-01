@@ -23,7 +23,7 @@ const port = process.env.PORT || 8080;
 
 const csrfMiddleware = csrf({ cookie: { sameSite: true } });
 
-app.use("/main", express.static(resolve("../frontend/dist")));
+app.use("/main", express.static(resolve("/frontend")));
 
 app.use(express.json());
 app.use(cookieParser());

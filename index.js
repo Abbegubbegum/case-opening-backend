@@ -43,23 +43,29 @@ app.get("/", (req, res) => {
 });
 app.post("/api/login", (req, res) => {
     const idToken = req.body.idToken || "";
+    console.time("Verify ID");
     admin
         .auth()
         .verifyIdToken(idToken)
         .then(async (decodedToken) => {
-        const users = await sequelize.query(`SELECT (AdministratorAccess) FROM Users WHERE FirebaseUID = '${decodedToken.uid}'`, { type: QueryTypes.SELECT });
+        console.timeEnd("Verify ID");
+        console.time("Get User");
+        const users = await sequelize.query(`SELECT AdministratorAccess, ID FROM Users WHERE FirebaseUID = '${decodedToken.uid}'`, { type: QueryTypes.SELECT });
         let adminAccess = false;
+        console.timeEnd("Get User");
         if (users.length === 0) {
             await sequelize.query(`INSERT INTO Users (FirebaseUID, Email) VALUES ('${decodedToken.uid}', '${decodedToken.email}')`);
-            await addCasesToUser(decodedToken.uid, "Weapon Case", 1);
-            await addCasesToUser(decodedToken.uid, "Bravo Case", 1);
-            await addCasesToUser(decodedToken.uid, "Hydra Case", 2);
+            await addCasesToUser(users[0].ID, "Weapon Case", 1);
+            await addCasesToUser(users[0].ID, "Bravo Case", 1);
+            await addCasesToUser(users[0].ID, "Hydra Case", 2);
         }
         else {
             adminAccess = users[0].AdministratorAccess;
-            await addCasesToUser(decodedToken.uid, "Weapon Case", 1);
-            await addCasesToUser(decodedToken.uid, "Bravo Case", 1);
-            await addCasesToUser(decodedToken.uid, "Hydra Case", 2);
+            console.time("Add Case");
+            await addCasesToUser(users[0].ID, "Weapon Case", 1);
+            console.timeEnd("Add Case");
+            await addCasesToUser(users[0].ID, "Bravo Case", 1);
+            await addCasesToUser(users[0].ID, "Hydra Case", 2);
         }
         res.status(200).json(adminAccess);
         return;
@@ -69,36 +75,19 @@ app.post("/api/login", (req, res) => {
         res.status(401).send(err);
     });
 });
-app.get("/api/getcase", (req, res) => {
-    const idToken = req.query.idToken;
-    if (typeof idToken !== "string") {
-        res.status(400).send("Bad Request, No ID Token");
-        return;
-    }
-    admin
-        .auth()
-        .verifyIdToken(idToken)
-        .then(async (decodedToken) => {
-        await addCasesToUser(decodedToken.uid, "Weapon Case", 1);
-        res.sendStatus(200);
-        return;
-    })
-        .catch((err) => {
-        res.status(401).send("Unauthorized Request");
-        console.log(err);
-        return;
-    });
-});
 app.get("/api/inventory", (req, res) => {
     const idToken = req.query.idToken;
     if (typeof idToken !== "string") {
         res.status(400).send("Bad Request, No ID Token");
         return;
     }
+    console.time("Verify ID");
     admin
         .auth()
         .verifyIdToken(idToken)
         .then(async (decodedToken) => {
+        console.timeEnd("Verify ID");
+        console.time("Get Inventory");
         let inventory = await sequelize.query(`SELECT Cases.CaseName, Cases.ImagePath, SUM(InventoryDetails.Quantity) AS Quantity
 				FROM Users
 				INNER JOIN InventoryDetails
@@ -107,6 +96,7 @@ app.get("/api/inventory", (req, res) => {
 				ON InventoryDetails.CaseID = Cases.ID
 				WHERE Users.FirebaseUID = '${decodedToken.uid}' AND Quantity > 0
 				GROUP BY Cases.CaseName, Cases.ImagePath`, { type: QueryTypes.SELECT });
+        console.timeEnd("Get Inventory");
         res.status(200).json(inventory);
     })
         .catch((err) => {
@@ -186,13 +176,7 @@ app.get("/api/items", (req, res) => {
 app.listen(port, () => {
     console.log(`Listening on http://localhost:${port}`);
 });
-async function addCasesToUser(firebaseUID, caseName, quantity) {
-    let user = await sequelize.query(`SELECT ID from Users WHERE FirebaseUID = '${firebaseUID}'`, { type: QueryTypes.SELECT });
-    if (user.length === 0) {
-        console.log("User not found with uid: " + firebaseUID);
-        return;
-    }
-    const userID = user[0].ID;
+async function addCasesToUser(userID, caseName, quantity) {
     console.log("User ID: " + userID);
     let weaponCase = await sequelize.query(`SELECT ID FROM Cases WHERE CaseName = '${caseName}'`, { type: QueryTypes.SELECT });
     if (weaponCase.length === 0) {
